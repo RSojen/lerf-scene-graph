@@ -40,6 +40,7 @@ from lerf.encoders.image_encoder import BaseImageEncoder
 from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManager, VanillaDataManagerConfig
 
 
+
 @dataclass
 class LERFDataManagerConfig(VanillaDataManagerConfig):
     _target: Type = field(default_factory=lambda: LERFDataManager)
@@ -79,6 +80,10 @@ class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
         images = [self.train_dataset[i]["image"].permute(2, 0, 1)[None, ...] for i in range(len(self.train_dataset))]
         images = torch.cat(images)
 
+        #add poses
+        cameras = [self.train_dataset[i]["camera"] for i in range(len(self.train_dataset))]
+        cameras = torch.cat(cameras)
+
         cache_dir = f"outputs/{self.config.dataparser.data.name}"
         clip_cache_path = Path(osp.join(cache_dir, f"clip_{self.image_encoder.name}"))
         dino_cache_path = Path(osp.join(cache_dir, "dino.npy"))
@@ -92,6 +97,7 @@ class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
         torch.cuda.empty_cache()
         self.clip_interpolator = PyramidEmbeddingDataloader(
             image_list=images,
+            poses = cameras,
             device=self.device,
             cfg={
                 "tile_size_range": [0.05, 0.5],
