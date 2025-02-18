@@ -10,6 +10,8 @@ from lerf.data.utils.embeddings_directory import Scene_Graph_Nerf_Module
 from lerf.encoders.openclip_encoder import (OpenCLIPNetwork,
                                         OpenCLIPNetworkConfig)
 from nerfstudio.cameras.cameras import Cameras
+from jaxtyping import Float
+from torch import Tensor
 
 
 
@@ -22,6 +24,8 @@ class PatchEmbeddingDataloader(FeatureDataloader):
         image_list: torch.Tensor = None,
         cameras: Cameras = None,
         cache_path: str = None,
+        dataparser_scale: float = None,
+        applied_transform: Float[Tensor, "3 4"] = None
     ):
         assert "tile_ratio" in cfg
         assert "stride_ratio" in cfg
@@ -67,6 +71,9 @@ class PatchEmbeddingDataloader(FeatureDataloader):
         self.SceneGraph = None
 
         self.cameras = cameras
+
+        self.dataparser_scale = dataparser_scale
+        self.applied_transform = applied_transform
 
         # instantiate model
         self.model = OpenCLIPNetwork(network)
@@ -154,15 +161,45 @@ class PatchEmbeddingDataloader(FeatureDataloader):
         # Flatten to a list of coordinates.
         patch_centres = patch_centres.reshape(-1, 2)  # each row is [row, col]
 
+
+
         rays = self.cameras.generate_rays(camera_index=index, indices = patch_centres)
-        for ray in rays:
-            hit_info = self.SceneGraph.ray_bb_intersection(ray.origin, ray.direction)
+
+        embeddings_text = torch.Tensor(rays.size, device = self.device)
+
+        for i in rays.size:
+            #transform ray origins and directions to original space
+            inv_transform = torch.linalg.inv(
+                torch.cat(
+                    (
+                        self.applied_transform,
+                        torch.tensor([[0, 0, 0, 1]], dtype=self.applied_transform.dtype, device=self.applied_transform.device),
+                    ),
+                    0,
+                )
+            )
+
+            origin = rays.origins[i] / self.dataparser_scale
+            direction = rays.directions[i] / self.dataparser_scale
+
+            ray_orig_homg = torch.cat([origin, torch.tensor([1.0], device=rays.device)], dim=0)
+            ray_direction_homg = torch.cat([direction, torch.tensor([1.0], device=rays.device)], dim=0)
+
+            transformed_origin = np.matmul(inv_transform, ray_orig_homg)
+            transformed_direction = np.matmul(inv_transform, ray_direction_homg)
+
+            #convert from homogenous to non-homogenous
+            transformed_origin = transformed_origin[:3] / transformed_origin[3]
+            transformed_direction = transformed_direction[:3] / transformed_direction[3]
+
+            hit_info = self.SceneGraph.ray_bb_intersection(transformed_origin, transformed_direction)
             index = hit_info["index"]
+            embedding = self.SceneGraph.graph_embeddings[index]
+            embeddings_text[i] = embedding
 
 
         with torch.no_grad():
-            clip_embeds = self.model.encode_image(tiles)
-            clip_embeds_text = self.model.encode_text()
+            clip_embeds = (self.model.encode_image(tiles) + embeddings_text)/2
         clip_embeds /= clip_embeds.norm(dim=-1, keepdim=True)
 
         clip_embeds = clip_embeds.reshape((self.center_x.shape[0], self.center_y.shape[0], -1))

@@ -4,6 +4,8 @@ import sys
 import numpy as np
 import torch
 from lerf.lerf_fieldheadnames import LERFFieldHeadNames
+
+
 from torch import nn, Tensor
 from torch.nn.parameter import Parameter
 from jaxtyping import Float
@@ -18,6 +20,7 @@ from nerfstudio.field_components.spatial_distortions import (
     SpatialDistortion,
 )
 from nerfstudio.fields.base_field import Field
+
 
 try:
     import tinycudann as tcnn
@@ -99,12 +102,17 @@ class LERFField(Field):
         positions = self.spatial_distortion(positions)
         positions = (positions + 2.0) / 4.0
 
+        #caclulate scene graph embedding for position
+
+
         xs = [e(positions.view(-1, 3)) for e in self.clip_encs]
         x = torch.concat(xs, dim=-1)
 
         outputs[LERFFieldHeadNames.HASHGRID] = x.view(*ray_samples.frustums.shape, -1)
 
         clip_pass = self.clip_net(torch.cat([x, clip_scales.view(-1, 1)], dim=-1)).view(*ray_samples.frustums.shape, -1)
+
+
         outputs[LERFFieldHeadNames.CLIP] = clip_pass / clip_pass.norm(dim=-1, keepdim=True)
 
         dino_pass = self.dino_net(x).view(*ray_samples.frustums.shape, -1)

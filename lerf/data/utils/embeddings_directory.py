@@ -1,3 +1,4 @@
+import torch
 
 from lerf.encoders.image_encoder import BaseImageEncoder
 from lerf.encoders.openclip_encoder import (OpenCLIPNetwork,
@@ -32,23 +33,27 @@ class Scene_Graph_Nerf_Module():
             laser_path: str = None,
             markers_path: str = None,
             model: BaseImageEncoder = None,
+            device: torch.device = None
     ):
         self.recon_interface = aru_recon_interface.ReconInterface(rgb_filepath, depth_filepath, transform_path, laser_path, False)
         print('finished reading monolithics')
         self.markers = self.recon_interface.read_markers(markers_path)
+        self.device = device
         self.object_points = self.markers[0]
-        print(self.object_points)
+        #print(self.object_points)
         self.object_colors = self.markers[1]
-        print(self.object_colors)
+        #print(self.object_colors)
         self.object_labels = self.markers[2]
-        print(self.object_labels)
+        #print(self.object_labels)
         self.num_objects = self.markers[3]
-        print(self.num_objects)
+        #print(self.num_objects)
         self.row_labels = self.markers[4]
-        print(self.row_labels)
+        #print(self.row_labels)
         self.box_points = self.markers[5]
-        print(self.box_points)
+        #print(self.box_points)
         self.nodes = self.markers[6]
+        self.descriptors = self.markers[7]
+        print(self.descriptors)
 
         #build the bvh
         objects = []
@@ -73,11 +78,13 @@ class Scene_Graph_Nerf_Module():
         for i in range(len(self.box_points)):
             index = i
 
-            text_tokenized = model.tokenizer(self.object_labels[i])
-            text_embedding = model.encode_text(text_tokenized)
-
             print("encoding text...")
-            print(self.object_labels[i])
+            print(self.descriptors[i])
+
+            text_tokenized = model.tokenizer(self.descriptors[i]).to(self.device)
+            print(text_tokenized.device)
+            text_embedding = model.model.encode_text(text_tokenized)
+
             print("finished encoding")
             graph_embeddings[index] = text_embedding
 
@@ -181,8 +188,9 @@ if __name__ == "__main__":
     laser_path = '/home/ritvik/Downloads/Archive 1/laser.monolithic'
     marker_path = '/home/ritvik/Downloads/Archive 1/farm_markers.monolithic'
 
+    device = torch.device("cuda")
 
-    module = Scene_Graph_Nerf_Module(rgb_path, depth_path, transforms_path, laser_path, marker_path, model)
+    module = Scene_Graph_Nerf_Module(rgb_path, depth_path, transforms_path, laser_path, marker_path, model, device)
 
 
 

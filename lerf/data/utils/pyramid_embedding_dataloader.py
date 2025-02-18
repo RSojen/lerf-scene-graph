@@ -8,6 +8,8 @@ from lerf.data.utils.feature_dataloader import FeatureDataloader
 from lerf.data.utils.patch_embedding_dataloader import PatchEmbeddingDataloader
 from lerf.encoders.image_encoder import BaseImageEncoder
 from tqdm import tqdm
+from jaxtyping import Float
+from torch import Tensor
 
 from nerfstudio.cameras.cameras import Cameras
 
@@ -20,6 +22,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         model: BaseImageEncoder,
         image_list: torch.Tensor = None,
         cameras: Cameras = None,
+        dataparser_scale: float = None,
+        applied_transform: Float[Tensor, "3 4"] = None,
         cache_path: str = None,
     ):
         assert "tile_size_range" in cfg
@@ -35,6 +39,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.embed_size = self.model.embedding_dim
         self.data_dict = {}
         self.cameras = cameras
+        self.dataparser_scale = dataparser_scale
+        self.applied_transform = applied_transform
         super().__init__(cfg, device, image_list, cache_path)
 
     def __call__(self, img_points, scale=None):
@@ -80,6 +86,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
                 image_list=image_list,
                 cameras = self.cameras,
                 cache_path=Path(f"{self.cache_path}/level_{i}.npy"),
+                dataparser_scale=self.dataparser_scale,
+                applied_transform=self.applied_transform
             )
 
     def save(self):
