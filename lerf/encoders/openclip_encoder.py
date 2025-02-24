@@ -20,7 +20,7 @@ class OpenCLIPNetworkConfig(BaseImageEncoderConfig):
     clip_model_type: str = "ViT-B-16"
     clip_model_pretrained: str = "laion2b_s34b_b88k"
     clip_n_dims: int = 512
-    negatives: Tuple[str] = ("object", "things", "stuff", "texture")
+    negatives: Tuple[str, ...] = ("object", "things", "stuff", "texture")
 
 
 class OpenCLIPNetwork(BaseImageEncoder):
