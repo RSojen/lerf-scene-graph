@@ -16,11 +16,13 @@ class FeatureDataloader(ABC):
             image_list: torch.Tensor, # (N, 3, H, W)
             cache_path: Path,
     ):
+        print("instantiating...")
         self.cfg = cfg
         self.device = device
         self.cache_path = cache_path
         self.data = None # only expect data to be cached, nothing else
         self.try_load(image_list) # don't save image_list, avoid duplicates
+        print("done instantiating")
 
     @abstractmethod
     def __call__(self, img_points):

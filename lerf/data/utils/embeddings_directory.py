@@ -5,6 +5,8 @@ from lerf.encoders.openclip_encoder import (OpenCLIPNetwork,
                                         OpenCLIPNetworkConfig)
 import sys
 import os
+import open3d as o3d
+import plotly.graph_objects as go
 
 import numpy as np
 # Determine the build directory
@@ -53,7 +55,6 @@ class Scene_Graph_Nerf_Module():
         #print(self.box_points)
         self.nodes = self.markers[6]
         self.descriptors = self.markers[7]
-        print(self.descriptors)
 
         #build the bvh
         objects = []
@@ -126,7 +127,7 @@ class Scene_Graph_Nerf_Module():
             return hit_info
 
         # Check ray intersection with the node's bounding box
-        intersects, t = self.ray_intersects_aabb(ray_origin, ray_direction, *node.bounding_box)
+        intersects, t = self.ray_intersects_aabb(ray_origin, ray_direction, node.bounding_box[0], node.bounding_box[1])
         if not intersects or t > hit_info['t']:
             return hit_info
 
@@ -144,10 +145,13 @@ class Scene_Graph_Nerf_Module():
         return hit_info
 
     def ray_bb_intersection(self, ray_origin, ray_direction):
-        hit_info = self.traverse_bvh(self.bvh_root, ray_origin, ray_direction)
+        #convert to numpy arrays
+        ray_origin_np = ray_origin.cpu().detach().numpy()
+        ray_direction_np = ray_direction.cpu().detach().numpy()
+        hit_info = self.traverse_bvh(self.bvh_root, ray_origin_np, ray_direction_np)
         return hit_info
 
-    def ray_intersects_aabb(ray_origin, ray_direction, box_min, box_max):
+    def ray_intersects_aabb(self, ray_origin, ray_direction, box_min, box_max):
         tmin = (box_min - ray_origin) / ray_direction
         tmax = (box_max - ray_origin) / ray_direction
 
@@ -161,6 +165,57 @@ class Scene_Graph_Nerf_Module():
             return False, None  # No intersection
 
         return True, t_enter  # Intersection occurs
+    def draw_bboxes(self):
+        # Draw the plant bounding boxes
+        self.b_box_list = []
+        traces=[]
+        box_points = self.box_points
+        for i in range(len(box_points)):
+            offset = 0
+            bbox = o3d.geometry.AxisAlignedBoundingBox(
+                min_bound=[box_points[i][0] + offset, box_points[i][1] + offset, box_points[i][2] + offset],
+                max_bound=[box_points[i][3] + offset, box_points[i][4] + offset, box_points[i][5] + offset])
+
+            bbox_line_points = [[box_points[i][0] + offset, box_points[i][1] + offset, box_points[i][2] + offset],
+                                [box_points[i][3] + offset, box_points[i][1] + offset, box_points[i][2] + offset],
+                                [box_points[i][0] + offset, box_points[i][4] + offset, box_points[i][2] + offset],
+                                [box_points[i][0] + offset, box_points[i][1] + offset, box_points[i][5] + offset],
+                                [box_points[i][3] + offset, box_points[i][4] + offset, box_points[i][2] + offset],
+                                [box_points[i][3] + offset, box_points[i][4] + offset, box_points[i][5] + offset],
+                                [box_points[i][0] + offset, box_points[i][4] + offset, box_points[i][5] + offset],
+                                [box_points[i][3] + offset, box_points[i][1] + offset, box_points[i][5] + offset]]
+
+            bbox_line_lines = [[0, 1], [0, 2], [0, 3], [4, 2], [4, 1], [4, 5], [6, 5], [6, 3], [6, 2], [7, 3], [7, 5],
+                               [7, 1]]
+
+            bbox_line_set = o3d.geometry.LineSet(
+                points=o3d.utility.Vector3dVector(bbox_line_points),
+                lines=o3d.utility.Vector2iVector(bbox_line_lines))
+            # Extract points and lines as numpy arrays
+            np_points = np.asarray(bbox_line_set.points)
+            np_lines = np.asarray(bbox_line_set.lines)
+
+            # Prepare coordinate lists, inserting None to separate line segments
+            x_coords, y_coords, z_coords = [], [], []
+            for line in np_lines:
+                p0 = np_points[line[0]]
+                p1 = np_points[line[1]]
+                # Append start point, end point, then a None to break the segment
+                x_coords += [p0[0], p1[0], None]
+                y_coords += [p0[1], p1[1], None]
+                z_coords += [p0[2], p1[2], None]
+
+            # Create a Plotly Scatter3d trace in lines mode
+            trace = go.Scatter3d(
+                x=x_coords,
+                y=y_coords,
+                z=z_coords,
+                mode='lines',
+                line=dict(color='blue', width=2)
+            )
+
+            traces.append(trace)
+        return traces
 
 
 class BVHNode:

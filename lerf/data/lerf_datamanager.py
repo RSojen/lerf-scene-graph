@@ -44,7 +44,7 @@ from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManager, Va
 @dataclass
 class LERFDataManagerConfig(VanillaDataManagerConfig):
     _target: Type = field(default_factory=lambda: LERFDataManager)
-    patch_tile_size_range: Tuple[int, int] = (0.05, 0.5)
+    patch_tile_size_range: Tuple[float,...] = (0.05, 0.5)
     patch_tile_size_res: int = 7
     patch_stride_scaler: float = 0.5
 
@@ -76,28 +76,38 @@ class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
         super().__init__(
             config=config, device=device, test_mode=test_mode, world_size=world_size, local_rank=local_rank, **kwargs
         )
+        print("done initialising parent")
         self.image_encoder: BaseImageEncoder = kwargs["image_encoder"]
+        print("extracting variables from parent")
+        print("done")
         images = [self.train_dataset[i]["image"].permute(2, 0, 1)[None, ...] for i in range(len(self.train_dataset))]
-        images = torch.cat(images)
+        print("starting concat")
+        print(images[1].shape)
+        images = torch.cat(images).detach()
 
-        #add poses
-        cameras = [self.train_dataset[i]["camera"] for i in range(len(self.train_dataset))]
-        cameras = torch.cat(cameras)
+        scale = self.train_dataset._dataparser_outputs.dataparser_scale
+        transform = self.train_dataset._dataparser_outputs.dataparser_transform
+
+        print(self.device)
+
+        print("extracted scale and transform")
 
         cache_dir = f"outputs/{self.config.dataparser.data.name}"
         clip_cache_path = Path(osp.join(cache_dir, f"clip_{self.image_encoder.name}"))
         dino_cache_path = Path(osp.join(cache_dir, "dino.npy"))
         # NOTE: cache config is sensitive to list vs. tuple, because it checks for dict equality
+        print("making DINO outputs")
         self.dino_dataloader = DinoDataloader(
             image_list=images,
             device=self.device,
             cfg={"image_shape": list(images.shape[2:4])},
             cache_path=dino_cache_path,
         )
+        print("finished DINO outputs")
         torch.cuda.empty_cache()
+        print("creating pyramid")
         self.clip_interpolator = PyramidEmbeddingDataloader(
             image_list=images,
-            poses = cameras,
             device=self.device,
             cfg={
                 "tile_size_range": [0.05, 0.5],
@@ -108,11 +118,15 @@ class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
             },
             cache_path=clip_cache_path,
             model=self.image_encoder,
+            cameras= self.train_dataparser_outputs.cameras,
+            dataparser_scale=scale,
+            applied_transform=transform
         )
 
     def next_train(self, step: int) -> Tuple[RayBundle, Dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
+        print("getting image batch")
         image_batch = next(self.iter_train_image_dataloader)
         assert self.train_pixel_sampler is not None
         batch = self.train_pixel_sampler.sample(image_batch)
