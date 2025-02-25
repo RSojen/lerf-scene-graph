@@ -9,8 +9,9 @@ import open3d as o3d
 import plotly.graph_objects as go
 
 import numpy as np
-# Determine the build directory
-build_dir = '/home/ritvik/aru_sil_core/interfaces/build/temp.linux-x86_64-cpython-38'
+
+#add build files to path
+build_dir = '/home/paperspace/code/aru_sil_core/build'
 module_path = None
 for root, dirs, files in os.walk(build_dir):
     for file in files:
@@ -21,8 +22,7 @@ for root, dirs, files in os.walk(build_dir):
 
 # Add the build directory to the system path
 sys.path.append(module_path)
-#add build files to path
-sys.path.insert(0,"/home/ritvik/aru_sil_core/interfaces/build/temp.linux-x86_64-cpython-38/lib")
+sys.path.insert(0,"/home/paperspace/code/aru_sil_core/build/lib")
 import aru_recon_interface
 
 

@@ -13,6 +13,8 @@ from torch import Tensor
 
 from nerfstudio.cameras.cameras import Cameras
 
+from lerf.data.utils.embeddings_directory import Scene_Graph_Nerf_Module
+
 
 class PyramidEmbeddingDataloader(FeatureDataloader):
     def __init__(
@@ -41,6 +43,14 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.cameras = cameras
         self.dataparser_scale = dataparser_scale
         self.applied_transform = applied_transform
+         # set filepaths
+        self.rgb_path = '/home/paperspace/data/Archive 1/kf_image_set_0.monolithic'
+        self.depth_path = '/home/paperspace/data/Archive 1/kf_laser_depth_set_0.monolithic'
+        self.transforms_path = '/home/paperspace/data/Archive 1/laser_mac_transform.monolithic'
+        self.laser_path = '/home/paperspace/data/Archive 1/laser.monolithic'
+        self.marker_path = '/home/paperspace/Archive 1/farm_markers.monolithic'
+        self.scene_graph = Scene_Graph_Nerf_Module(self.rgb_path, self.depth_path, self.transforms_path, self.laser_path, self.marker_path, self.model, device)
+
         super().__init__(cfg, device, image_list, cache_path)
 
     def __call__(self, img_points, scale=None):
@@ -87,7 +97,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
                 cameras = self.cameras,
                 cache_path=Path(f"{self.cache_path}/level_{i}.npy"),
                 dataparser_scale=self.dataparser_scale,
-                applied_transform=self.applied_transform
+                applied_transform=self.applied_transform,
+                scene_graph= self.scene_graph
             )
 
     def save(self):
