@@ -236,13 +236,6 @@ if __name__ == "__main__":
     model = OpenCLIPNetwork(network)
     print('instantiated model')
 
-    #set filepaths
-    rgb_path = '/home/ritvik/Downloads/Archive 1/kf_image_set_0.monolithic'
-    depth_path = '/home/ritvik/Downloads/Archive 1/kf_laser_depth_set_0.monolithic'
-    transforms_path = '/home/ritvik/Downloads/Archive 1/laser_mac_transform.monolithic'
-    laser_path = '/home/ritvik/Downloads/Archive 1/laser.monolithic'
-    marker_path = '/home/ritvik/Downloads/Archive 1/farm_markers.monolithic'
-
     device = torch.device("cuda")
 
     module = Scene_Graph_Nerf_Module(rgb_path, depth_path, transforms_path, laser_path, marker_path, model, device)

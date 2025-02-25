@@ -43,12 +43,7 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.cameras = cameras
         self.dataparser_scale = dataparser_scale
         self.applied_transform = applied_transform
-         # set filepaths
-        self.rgb_path = '/home/paperspace/data/Archive 1/kf_image_set_0.monolithic'
-        self.depth_path = '/home/paperspace/data/Archive 1/kf_laser_depth_set_0.monolithic'
-        self.transforms_path = '/home/paperspace/data/Archive 1/laser_mac_transform.monolithic'
-        self.laser_path = '/home/paperspace/data/Archive 1/laser.monolithic'
-        self.marker_path = '/home/paperspace/Archive 1/farm_markers.monolithic'
+        
         self.scene_graph = Scene_Graph_Nerf_Module(self.rgb_path, self.depth_path, self.transforms_path, self.laser_path, self.marker_path, self.model, device)
 
         super().__init__(cfg, device, image_list, cache_path)
