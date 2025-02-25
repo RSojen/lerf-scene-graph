@@ -3,58 +3,33 @@ import torch
 from lerf.encoders.image_encoder import BaseImageEncoder
 from lerf.encoders.openclip_encoder import (OpenCLIPNetwork,
                                         OpenCLIPNetworkConfig)
+from nerfstudio.utils.io import load_from_json
 import sys
 import os
 import open3d as o3d
 import plotly.graph_objects as go
 
 import numpy as np
+<<<<<<< HEAD
 
-#add build files to path
-build_dir = '/home/paperspace/code/aru_sil_core/build'
-module_path = None
-for root, dirs, files in os.walk(build_dir):
-    for file in files:
-        print(file)
-        if file.startswith('aru_state_estimator') and (file.endswith('.so') or file.endswith('.pyd')):
-            module_path = root
-            break
 
-# Add the build directory to the system path
-sys.path.append(module_path)
-sys.path.insert(0,"/home/paperspace/code/aru_sil_core/build/lib")
-import aru_recon_interface
-
+=======
+>>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
 
 class Scene_Graph_Nerf_Module():
     def __init__(
             self,
-            rgb_filepath: str = None,
-            depth_filepath: str = None,
-            transform_path: str = None,
-            laser_path: str = None,
             markers_path: str = None,
             model: BaseImageEncoder = None,
             device: torch.device = None
     ):
-        self.recon_interface = aru_recon_interface.ReconInterface(rgb_filepath, depth_filepath, transform_path, laser_path, False)
         print('finished reading monolithics')
-        self.markers = self.recon_interface.read_markers(markers_path)
+        markers = load_from_json(markers_path)
         self.device = device
-        self.object_points = self.markers[0]
-        #print(self.object_points)
-        self.object_colors = self.markers[1]
-        #print(self.object_colors)
-        self.object_labels = self.markers[2]
-        #print(self.object_labels)
-        self.num_objects = self.markers[3]
-        #print(self.num_objects)
-        self.row_labels = self.markers[4]
-        #print(self.row_labels)
-        self.box_points = self.markers[5]
-        #print(self.box_points)
-        self.nodes = self.markers[6]
-        self.descriptors = self.markers[7]
+        self.object_points = markers['object_points']
+        self.row_labels = markers['row_labels']
+        self.box_points = np.array(markers['box_points'])
+        self.descriptors = markers['descriptors']
 
         #build the bvh
         objects = []
@@ -231,14 +206,13 @@ if __name__ == "__main__":
     network = OpenCLIPNetworkConfig(
         clip_model_type="ViT-B-16", clip_model_pretrained="laion2b_s34b_b88k", clip_n_dims=512
     )
-
     #instantiate model
     model = OpenCLIPNetwork(network)
     print('instantiated model')
 
     device = torch.device("cuda")
 
-    module = Scene_Graph_Nerf_Module(rgb_path, depth_path, transforms_path, laser_path, marker_path, model, device)
+    module = Scene_Graph_Nerf_Module(marker_path, model, device)
 
 
 

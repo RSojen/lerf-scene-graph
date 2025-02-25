@@ -11,6 +11,10 @@ from tqdm import tqdm
 from jaxtyping import Float
 from torch import Tensor
 
+from lerf.data.utils.embeddings_directory import Scene_Graph_Nerf_Module
+from lerf.encoders.openclip_encoder import (OpenCLIPNetwork,
+                                        OpenCLIPNetworkConfig)
+
 from nerfstudio.cameras.cameras import Cameras
 
 from lerf.data.utils.embeddings_directory import Scene_Graph_Nerf_Module
@@ -34,6 +38,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         assert "image_shape" in cfg
         assert "model_name" in cfg
 
+        print("instantiating pyramid")
+
         self.tile_sizes = torch.linspace(*cfg["tile_size_range"], cfg["tile_size_res"]).to(device)
         self.strider_scaler_list = [self._stride_scaler(tr.item(), cfg["stride_scaler"]) for tr in self.tile_sizes]
 
@@ -43,7 +49,11 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.cameras = cameras
         self.dataparser_scale = dataparser_scale
         self.applied_transform = applied_transform
+<<<<<<< HEAD
         
+=======
+      
+>>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
         self.scene_graph = Scene_Graph_Nerf_Module(self.rgb_path, self.depth_path, self.transforms_path, self.laser_path, self.marker_path, self.model, device)
 
         super().__init__(cfg, device, image_list, cache_path)
@@ -76,6 +86,7 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         raise FileNotFoundError  # trigger create
 
     def create(self, image_list):
+        print("creatin patch embeddings")
         os.makedirs(self.cache_path, exist_ok=True)
         for i, tr in enumerate(tqdm(self.tile_sizes, desc="Scales")):
             stride_scaler = self.strider_scaler_list[i]
@@ -93,8 +104,13 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
                 cache_path=Path(f"{self.cache_path}/level_{i}.npy"),
                 dataparser_scale=self.dataparser_scale,
                 applied_transform=self.applied_transform,
+<<<<<<< HEAD
                 scene_graph= self.scene_graph
+=======
+                scene_graph=self.scene_graph
+>>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
             )
+            print("made patch embedding dataloaader")
 
     def save(self):
         cache_info_path = self.cache_path.with_suffix(".info")
