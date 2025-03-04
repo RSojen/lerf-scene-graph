@@ -39,6 +39,11 @@ from lerf.data.utils.pyramid_embedding_dataloader import PyramidEmbeddingDataloa
 from lerf.encoders.image_encoder import BaseImageEncoder
 from nerfstudio.data.datamanagers.base_datamanager import VanillaDataManager, VanillaDataManagerConfig
 
+from typing import Generic
+from nerfstudio.data.datamanagers.base_datamanager import TDataset
+from nerfstudio.data.datasets.depth_dataset import DepthDataset
+from nerfstudio.data.pixel_samplers import PixelSamplerConfig, PairPixelSamplerConfig
+
 
 
 @dataclass
@@ -47,9 +52,12 @@ class LERFDataManagerConfig(VanillaDataManagerConfig):
     patch_tile_size_range: Tuple[float,...] = (0.05, 0.5)
     patch_tile_size_res: int = 7
     patch_stride_scaler: float = 0.5
+    #for use with SparseNerf==============
+    #pixel_sampler:PixelSamplerConfig = PairPixelSamplerConfig()
+    #=====================================
 
 
-class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
+class LERFDataManager(VanillaDataManager[DepthDataset]):  # pylint: disable=abstract-method
     """Basic stored data manager implementation.
 
     This is pretty much a port over from our old dataloading utilities, and is a little jank
@@ -126,7 +134,6 @@ class LERFDataManager(VanillaDataManager):  # pylint: disable=abstract-method
     def next_train(self, step: int) -> Tuple[RayBundle, Dict]:
         """Returns the next batch of data from the train dataloader."""
         self.train_count += 1
-        print("getting image batch")
         image_batch = next(self.iter_train_image_dataloader)
         assert self.train_pixel_sampler is not None
         batch = self.train_pixel_sampler.sample(image_batch)

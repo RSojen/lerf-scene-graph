@@ -102,9 +102,6 @@ class LERFField(Field):
         positions = self.spatial_distortion(positions)
         positions = (positions + 2.0) / 4.0
 
-        #caclulate scene graph embedding for position
-
-
         xs = [e(positions.view(-1, 3)) for e in self.clip_encs]
         x = torch.concat(xs, dim=-1)
 

@@ -8,13 +8,10 @@ import sys
 import os
 import open3d as o3d
 import plotly.graph_objects as go
+from pathlib import Path
+from num2words import num2words
 
 import numpy as np
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
 
 class Scene_Graph_Nerf_Module():
     def __init__(
@@ -24,7 +21,7 @@ class Scene_Graph_Nerf_Module():
             device: torch.device = None
     ):
         print('finished reading monolithics')
-        markers = load_from_json(markers_path)
+        markers = load_from_json(Path(markers_path))
         self.device = device
         self.object_points = markers['object_points']
         self.row_labels = markers['row_labels']
@@ -35,13 +32,14 @@ class Scene_Graph_Nerf_Module():
         objects = []
 
         for element, box in enumerate(self.box_points):
-            bounding_box={}
-            lower_bounds = box[:3]
-            upper_bounds = box[3:]
-            bounding_box["bounding_box"] = (lower_bounds, upper_bounds)
-            bounding_box["centroid"] = (lower_bounds + upper_bounds)/2
-            bounding_box["index"] = element
-            objects.append(bounding_box)
+            if (self.descriptors[element] != ''):
+                bounding_box={}
+                lower_bounds = box[:3]
+                upper_bounds = box[3:]
+                bounding_box["bounding_box"] = (lower_bounds, upper_bounds)
+                bounding_box["centroid"] = (lower_bounds + upper_bounds)/2
+                bounding_box["index"] = element
+                objects.append(bounding_box)
 
         self.bvh_root = self.build_bvh(objects)
 
@@ -53,16 +51,28 @@ class Scene_Graph_Nerf_Module():
 
         for i in range(len(self.box_points)):
             index = i
+            text = self.descriptors[i]
+            if (text != ''):
+                text = text.split()
+                layers = [text[i]+" "+text[i+1] for i in range(0, len(text), 2)]
+                text_embeddings = []
 
-            print("encoding text...")
-            print(self.descriptors[i])
+                for layer in layers:
+                    phrases = layer.split()
+                    new_indx = int(phrases[1])+1
+                    position = num2words(str(new_indx), to='ordinal')
+                    if (phrases[0] == 'Object'):
+                        phrases[0] = 'Plant'
+                    final_description = position + " " + phrases[0]
+                    print(final_description)
+                    with torch.no_grad():
+                        text_tokenized = model.tokenizer(final_description).to(self.device)
+                        text_embedding = model.model.encode_text(text_tokenized)
+                    text_embedding /= text_embedding.norm(dim=-1, keepdim=True)
+                    text_embeddings.append(text_embedding.squeeze().detach())
 
-            text_tokenized = model.tokenizer(self.descriptors[i]).to(self.device)
-            print(text_tokenized.device)
-            text_embedding = model.model.encode_text(text_tokenized)
-
-            print("finished encoding")
-            graph_embeddings[index] = text_embedding
+                #text_embedding = torch.cat(text_embeddings, dim=0)
+                graph_embeddings[index] = text_embeddings
 
         return graph_embeddings
 
@@ -70,6 +80,9 @@ class Scene_Graph_Nerf_Module():
         if len(objects) == 1:
             # Leaf node
             return BVHNode(objects[0]['bounding_box'], leaf=True, index=objects[0]['index'])
+
+        if not objects:
+            return None
 
         # Compute the bounding box for all objects
         all_mins = np.min([obj['bounding_box'][0] for obj in objects], axis=0)
@@ -211,6 +224,8 @@ if __name__ == "__main__":
     print('instantiated model')
 
     device = torch.device("cuda")
+
+    marker_path = "/home/paperspace/data/Lerf/markers/markers.json"
 
     module = Scene_Graph_Nerf_Module(marker_path, model, device)
 

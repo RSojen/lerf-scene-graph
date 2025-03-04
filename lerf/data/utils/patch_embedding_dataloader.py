@@ -133,7 +133,6 @@ class PatchEmbeddingDataloader(FeatureDataloader):
         aug_imgs = torch.cat([image])
 
         tiles = unfold_func(aug_imgs).permute(2, 0, 1).reshape(-1, 3, self.kernel_size, self.kernel_size).to("cuda")
-        print(tiles.shape)
 
         # Extract input dimensions
         N, C, H, W = aug_imgs.shape
@@ -173,8 +172,13 @@ class PatchEmbeddingDataloader(FeatureDataloader):
 
         text_tokenized = self.model.tokenizer("farm").to(self.device)
         text_embedding = self.model.model.encode_text(text_tokenized)
+        text_embedding /= text_embedding.norm(dim=-1, keepdim=True)
 
-        embeddings_text = torch.empty((rays.size, text_embedding.shape[1]), device=self.device)
+        text_embedding = [text_embedding]
+
+
+        #embeddings_text = torch.empty((rays.size, text_embedding.shape[1]), device=self.device)
+        embeddings = []
 
         #origins = []
         #directions = []
@@ -233,9 +237,10 @@ class PatchEmbeddingDataloader(FeatureDataloader):
             if (hit_info['hit']):
                 index = hit_info["index"]
                 embedding = self.SceneGraph.graph_embeddings[index]
-                embeddings_text[i] = embedding
+                embeddings.append(embedding)
             else:
-                embeddings_text[i] = text_embedding
+                embeddings.append([])
+                
 
         # origins = torch.cat(origins).view(-1, 3)
         # directions = torch.cat(directions).view(-1, 3)
@@ -270,9 +275,22 @@ class PatchEmbeddingDataloader(FeatureDataloader):
         # fig.show()
 
         with torch.no_grad():
-            clip_embeds = (self.model.encode_image(tiles) + embeddings_text) / 2
+            clip_embeds = self.model.encode_image(tiles)
+            clip_embeds /= clip_embeds.norm(dim=-1, keepdim=True)
 
-        clip_embeds /= clip_embeds.norm(dim=-1, keepdim=True)
+            for index, embed in enumerate(clip_embeds):
+                embeddings[index].append(embed)
+
+
+            averages = [torch.stack(sublist, dim=0).mean(dim=0) for sublist in embeddings]
+
+            #text_embedding = torch.cat(embeddings, dim=1)
+            #text_embedding = torch.cat(text_embedding, dim=0)
+            #clip_embeds = torch.mean(text_embedding, dim=1)
+
+            clip_embeds = torch.stack(averages, dim=0)
+
+       
 
         clip_embeds = clip_embeds.reshape((self.center_x.shape[0], self.center_y.shape[0], -1))
         clip_embeds = torch.concat((clip_embeds, clip_embeds[:, [-1], :]), dim=1)

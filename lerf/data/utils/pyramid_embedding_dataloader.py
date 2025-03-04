@@ -49,12 +49,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.cameras = cameras
         self.dataparser_scale = dataparser_scale
         self.applied_transform = applied_transform
-<<<<<<< HEAD
-        
-=======
-      
->>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
-        self.scene_graph = Scene_Graph_Nerf_Module(self.rgb_path, self.depth_path, self.transforms_path, self.laser_path, self.marker_path, self.model, device)
+        marker_path = "/home/paperspace/data/Lerf/markers/markers.json"
+        self.scene_graph = Scene_Graph_Nerf_Module(marker_path, self.model, device)
 
         super().__init__(cfg, device, image_list, cache_path)
 
@@ -104,11 +100,8 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
                 cache_path=Path(f"{self.cache_path}/level_{i}.npy"),
                 dataparser_scale=self.dataparser_scale,
                 applied_transform=self.applied_transform,
-<<<<<<< HEAD
                 scene_graph= self.scene_graph
-=======
-                scene_graph=self.scene_graph
->>>>>>> 3adaa68b4fe6de11a586469031f6754bc6ef74a7
+
             )
             print("made patch embedding dataloaader")
 
