@@ -69,12 +69,13 @@ replace the variable marker_path in lerf/data/utils/pyramid_embedding_dataloader
 ### 1. Lerf installation
 cd to this folder then run `python -m pip install -e .`
 ### 2. Updating the command line interface
-run 'ns-install-cli'
+run `ns-install-cli`
 ### 3. train the network
-Then once lerf has been added to nerfstudio using the above instructions, the network can be trained given a path to a transforms.json file as follows: 'ns-train lerf --data {PATH TO TRANSFORMS.JSON}'.
+Then once lerf has been added to nerfstudio using the above instructions, the network can be trained given a path to a transforms.json file as follows: `ns-train lerf --data {PATH TO TRANSFORMS.JSON}`.
 
+### 4. Generating relevany maps for cameras
 Once the network has been trained, the script lerf_render_image.py in lerf/scripts can be run with the following parameters int the python file. the config_dir variable should be set to wherever nerfstudio saved the model checkpoints after the training process
-and the positives (text query) can be set using the set_positives function
+and the positives (text query) can be set using the set_positives function. By default the camera poses used are from the training dataset
 
 ## Bibtex
 If you find this useful, please cite the paper!
