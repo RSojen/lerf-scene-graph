@@ -62,6 +62,9 @@ We've designed the code to modularly accept any image encoder that implements th
 (TODO expand this section)
 The main file to look at for editing and building off LERF is `lerf.py`, which extends the Nerfacto model from Nerfstudio, adds an additional language field, losses, and visualization. The CLIP and DINO pre-processing are carried out by `pyramid_interpolator.py` and `dino_dataloader.py`.
 
+# Integration with scene graphs
+Once the markers.json file has been generated, replace the variable marker_path in lerf/data/utils/pyramid_embedding_dataloader with the path to this json file. Then once lerf has been added to nerfstudio using the above instructions, the network can be trained given a path to a transforms.json file as follows: ns-train lerf --data {PATH TO TRANSFORMS.JSON}
+
 ## Bibtex
 If you find this useful, please cite the paper!
 <pre id="codecell0">@inproceedings{lerf2023,
