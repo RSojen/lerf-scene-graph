@@ -14,7 +14,8 @@ class CLIPRenderer(nn.Module):
     ) -> Float[Tensor, "bs num_classes"]:
         """Calculate semantics along the ray."""
         output = torch.sum(weights * embeds, dim=-2)
-        output = output / torch.linalg.norm(output, dim=-1, keepdim=True)
+        #Don't normalize the output
+        #output = output / torch.linalg.norm(output, dim=-1, keepdim=True)
         return output
 
 

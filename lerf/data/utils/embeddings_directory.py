@@ -30,6 +30,7 @@ class Scene_Graph_Nerf_Module():
 
         #build the bvh
         objects = []
+        self.box_points_filtered = {}
 
         for element, box in enumerate(self.box_points):
             if (self.descriptors[element] != ''):
@@ -40,6 +41,7 @@ class Scene_Graph_Nerf_Module():
                 bounding_box["centroid"] = (lower_bounds + upper_bounds)/2
                 bounding_box["index"] = element
                 objects.append(bounding_box)
+                self.box_points_filtered[element] = box
 
         self.bvh_root = self.build_bvh(objects)
 
@@ -64,11 +66,10 @@ class Scene_Graph_Nerf_Module():
                     if (phrases[0] == 'Object'):
                         phrases[0] = 'Plant'
                     final_description = position + " " + phrases[0]
-                    print(final_description)
                     with torch.no_grad():
                         text_tokenized = model.tokenizer(final_description).to(self.device)
                         text_embedding = model.model.encode_text(text_tokenized)
-                    text_embedding /= text_embedding.norm(dim=-1, keepdim=True)
+                    #text_embedding /= text_embedding.norm(dim=-1, keepdim=True)
                     text_embeddings.append(text_embedding.squeeze().detach())
 
                 #text_embedding = torch.cat(text_embeddings, dim=0)
@@ -124,6 +125,7 @@ class Scene_Graph_Nerf_Module():
             hit_info['hit'] = True
             hit_info['t'] = t
             hit_info['index'] = node.index
+            hit_info['bounding_box'] = node.bounding_box
             return hit_info
 
         # Traverse child nodes
@@ -139,6 +141,47 @@ class Scene_Graph_Nerf_Module():
         hit_info = self.traverse_bvh(self.bvh_root, ray_origin_np, ray_direction_np)
         return hit_info
 
+    def ray_intersection_normal(self, ray_origin, ray_direction):
+        ray_origin = ray_origin.cpu().detach().numpy()
+        ray_direction = ray_direction.cpu().detach().numpy()
+        t_min = 1000.0
+        out = None
+        for element in self.box_points_filtered.keys():
+            box_points = self.box_points_filtered[element]
+            box_min = box_points[:3]
+            box_max = box_points[3:]
+            hit_info, t = self.ray_intersects_aabb(ray_origin, ray_direction, box_min, box_max)
+            if (hit_info and t < t_min):
+                t_min = t
+                out = {'hit': True, 't': t, 'index': element, 'bounding_box': (box_min, box_max)}
+
+        if out is not None:
+            return out
+        else:
+            return {'hit': False, 't': float('inf'), 'index': None}
+            
+    def ray_intersection_point(self, point, origin, max_dist):
+        #iterate through bounding boxes to fins which one contains point
+        for element in self.box_points_filtered.keys():
+            box_points = self.box_points_filtered[element]
+            box_min = box_points[:3]
+            box_max = box_points[3:]
+
+            #check if point is contained in the bounding box
+            if (point[0] >= box_min[0] and point[0] <= box_max[0] and
+                point[1] >= box_min[1] and point[1] <= box_max[1] and
+                point[2] >= box_min[2] and point[2] <= box_max[2]):
+
+                #calculate distance from origin to point
+                dist = np.linalg.norm(point - origin)
+                print(dist)
+                if (dist < max_dist):
+                    return {'hit': True, 'index': element, 'bounding_box': (box_min, box_max)}
+
+        #no intersection
+        return {'hit': False, 'index': None}
+
+    
     def ray_intersects_aabb(self, ray_origin, ray_direction, box_min, box_max):
         tmin = (box_min - ray_origin) / ray_direction
         tmax = (box_max - ray_origin) / ray_direction
@@ -153,6 +196,7 @@ class Scene_Graph_Nerf_Module():
             return False, None  # No intersection
 
         return True, t_enter  # Intersection occurs
+  
     def draw_bboxes(self):
         # Draw the plant bounding boxes
         self.b_box_list = []

@@ -13,7 +13,7 @@ class FeatureDataloader(ABC):
             self,
             cfg: dict,
             device: torch.device,
-            image_list: torch.Tensor, # (N, 3, H, W)
+            image_list: torch.Tensor, # (N, 3, H, W) # (N, 1, H, W)
             cache_path: Path,
     ):
         print("instantiating...")

@@ -27,6 +27,7 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         device: torch.device,
         model: BaseImageEncoder,
         image_list: torch.Tensor = None,
+        depth_list: torch.Tensor = None,
         cameras: Cameras = None,
         dataparser_scale: float = None,
         applied_transform: Float[Tensor, "3 4"] = None,
@@ -43,6 +44,7 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
         self.tile_sizes = torch.linspace(*cfg["tile_size_range"], cfg["tile_size_res"]).to(device)
         self.strider_scaler_list = [self._stride_scaler(tr.item(), cfg["stride_scaler"]) for tr in self.tile_sizes]
 
+        self.depths=depth_list
         self.model = model
         self.embed_size = self.model.embedding_dim
         self.data_dict = {}
@@ -96,6 +98,7 @@ class PyramidEmbeddingDataloader(FeatureDataloader):
                 device=self.device,
                 model=self.model,
                 image_list=image_list,
+                depths=self.depths,
                 cameras = self.cameras,
                 cache_path=Path(f"{self.cache_path}/level_{i}.npy"),
                 dataparser_scale=self.dataparser_scale,

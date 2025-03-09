@@ -89,9 +89,11 @@ class LERFDataManager(VanillaDataManager[DepthDataset]):  # pylint: disable=abst
         print("extracting variables from parent")
         print("done")
         images = [self.train_dataset[i]["image"].permute(2, 0, 1)[None, ...] for i in range(len(self.train_dataset))]
+        depths = [self.train_dataset[i]["depth_image"].permute(2, 0, 1)[None, ...] for i in range(len(self.train_dataset))]
+
         print("starting concat")
-        print(images[1].shape)
         images = torch.cat(images).detach()
+        depths = torch.cat(depths).detach()
 
         scale = self.train_dataset._dataparser_outputs.dataparser_scale
         transform = self.train_dataset._dataparser_outputs.dataparser_transform
@@ -116,6 +118,7 @@ class LERFDataManager(VanillaDataManager[DepthDataset]):  # pylint: disable=abst
         print("creating pyramid")
         self.clip_interpolator = PyramidEmbeddingDataloader(
             image_list=images,
+            depth_list=depths,
             device=self.device,
             cfg={
                 "tile_size_range": [0.05, 0.5],
